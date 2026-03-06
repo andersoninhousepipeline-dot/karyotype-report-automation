@@ -289,11 +289,12 @@ class KaryotypeReportGenerator:
         self.images = [p for p in image_paths if p and os.path.isfile(p)]
         self.out    = output_dir
 
-        # Derive filename
+        # Derive filename: "{Name} ({SampleNumber}) PBCKT with logo.pdf"
         name   = " ".join((self._get("NAME") or "Unknown").split())
         sample = " ".join((self._get("SAMPLE NUMBER") or "NoSN").split())
-        safe   = re.sub(r'[^\w\s\-\(\)]', '', name).strip().replace(" ", "_")
-        self.filename = f"{safe}_{sample}_Karyotype.pdf"
+        # Remove characters not safe for filenames (keep alphanumeric, spaces, hyphens, parens, dots)
+        safe_name = re.sub(r'[^\w\s\-\(\)\.]', '', name).strip()
+        self.filename = f"{safe_name} ({sample}) PBCKT with logo.pdf"
         self.filepath = os.path.join(output_dir, self.filename)
 
         # Determine layout variant
