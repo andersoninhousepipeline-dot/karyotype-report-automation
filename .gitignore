@@ -1,0 +1,38 @@
+# Patient data — never commit to repo
+*.xlsx
+*.xls
+*.jpg
+*.JPG
+*.jpeg
+*.JPEG
+*.png
+*.PNG
+Thumbs.db
+
+# Generated output
+Generated_Reports/
+draft/
+
+# Reference PDFs (contain patient data)
+Reports/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# Build artifacts
+build/
+dist/
+*.spec.bak
+venv/
+.venv/
+
+# Assets (regenerate with generate_assets_py.py)
+# karyotype_assets.py  ← keep this, it's source code
+
+# OS
+.DS_Store
