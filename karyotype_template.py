@@ -634,22 +634,26 @@ class KaryotypeReportGenerator:
             right_w = avail_w * 0.59
             gap     = avail_w - left_w - right_w   # ≈ 4% gap
 
-            # Left side: scatter fills top 52%, zoom pair fills bottom 46%, 2% gap between
+            # Left side: scatter top-aligned, zoom bottom-aligned — both flush to column edges
             scatter_h = avail_h * 0.52
             zoom_h    = avail_h * 0.46
             mid_gap   = avail_h - scatter_h - zoom_h
             self._place_image(c, self.images[0],
-                              DIV_X0, bottom_y + zoom_h + mid_gap, left_w, scatter_h)
+                              DIV_X0, bottom_y + zoom_h + mid_gap, left_w, scatter_h,
+                              valign='top')
             self._place_image(c, self.images[1],
-                              DIV_X0, bottom_y, left_w, zoom_h)
+                              DIV_X0, bottom_y, left_w, zoom_h,
+                              valign='bottom')
 
-            # Right side: full karyogram spans full height, aligned bottom
+            # Right side: karyogram centred, spans full height
             self._place_image(c, self.images[2],
-                              DIV_X0 + left_w + gap, bottom_y, right_w, avail_h)
+                              DIV_X0 + left_w + gap, bottom_y, right_w, avail_h,
+                              valign='center')
 
     def _place_image(self, c, path: str, x: float, y: float, max_w: float, max_h: float,
-                     fixed_scale: float = None):
-        """Draw image scaled to fit max_w × max_h; box is sized to the image, centred in slot.
+                     fixed_scale: float = None, valign: str = 'center'):
+        """Draw image scaled to fit max_w × max_h with a single black border.
+        valign: 'center' (default), 'top' (RL: image flush to slot top), 'bottom' (flush to slot bottom).
         If fixed_scale is provided, use that scale instead of computing from dimensions."""
         try:
             from PIL import Image as PILImage
@@ -664,18 +668,24 @@ class KaryotypeReportGenerator:
             scale = min(max_w / iw, max_h / ih)
 
         dw, dh = iw * scale, ih * scale
-        # Centre the image within the available slot
+        # Horizontal: always centre
         cx = x + (max_w - dw) / 2
-        cy = y + (max_h - dh) / 2
-        # Draw border box exactly around the scaled image (visible gray border)
-        c.setFillColor(WHITE)
-        c.setStrokeColor(HexColor('#999999'))
-        c.setLineWidth(1.0)
-        c.rect(cx, cy, dw, dh, fill=1, stroke=1)
+        # Vertical alignment (RL y increases upward)
+        if valign == 'top':
+            cy = y + max_h - dh   # flush to top of slot
+        elif valign == 'bottom':
+            cy = y                 # flush to bottom of slot
+        else:
+            cy = y + (max_h - dh) / 2  # centred
+
+        # Draw image first, then single black border on top (avoids double-border artefact)
         try:
             c.drawImage(path, cx, cy, dw, dh, mask="auto", preserveAspectRatio=True)
         except Exception:
             pass
+        c.setStrokeColor(BLACK)
+        c.setLineWidth(1.0)
+        c.rect(cx, cy, dw, dh, fill=0, stroke=1)
 
     def _draw_metaphase_table(self, c, rl_y: float) -> float:
         """Draw the 4-cell metaphase/autosome status table. Returns RL y below table."""
