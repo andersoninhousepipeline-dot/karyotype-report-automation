@@ -48,7 +48,8 @@ import karyotype_assets as _assets
 # ─── Colours ──────────────────────────────────────────────────────────────────
 # Extracted from reference PDF (PARTHIBAN): (0.122, 0.22, 0.392) = #1F3864
 DARK_BLUE  = HexColor('#1F3864')   # section headings, title, "This report..." header
-RED        = Color(1, 0, 0)        # ISCN box text (pure red, as in reference PDF)
+RED        = Color(1, 0, 0)        # ISCN box text — abnormal
+GREEN      = HexColor('#00B050')   # ISCN box text — normal (both autosome+sex normal)
 AMBER_BG   = HexColor('#F2F2F2')   # ISCN box background  (light gray)
 AMBER_BRD  = HexColor('#D9D9D9')   # ISCN box border
 GRAY_DIV   = Color(0.6, 0.6, 0.6) # section divider lines
@@ -301,6 +302,17 @@ class KaryotypeReportGenerator:
         has_comments = bool(self._get("COMMENTS"))
         self.three_page = has_comments   # True → 3-page layout
 
+    def _iscn_color(self):
+        """Return ISCN text color based on autosome/sex chromosome values.
+        Both Normal → GREEN; either Abnormal → RED; either Variant → BLACK."""
+        auto = self._get("AUTOSOME").lower()
+        sex  = self._get("SEX CHROMOSOME", "SEX CHROMOSOME ").lower()
+        if "abnormal" in auto or "abnormal" in sex:
+            return RED
+        if "variant" in auto or "variant" in sex:
+            return BLACK
+        return GREEN  # both normal
+
     # ── accessors ─────────────────────────────────────────────────────────────
     def _get(self, *keys) -> str:
         for k in keys:
@@ -370,30 +382,40 @@ class KaryotypeReportGenerator:
         _divider(c, res_y + 12, lw=0.5)
         res_y = _draw_section_heading(c, "Result", res_y)
 
-        # ISCN result box — auto-wraps and auto-sizes height to fit content
+        # ISCN result box — tries to fit on single line by reducing font;
+        # falls back to word-wrap only if text won't fit even at min font size.
         iscn = self._get("RESULT")
         prefix = "International System for Human Cytogenomic Nomenclature (ISCN 2024):"
         full_text = prefix + "  " + iscn
         box_x0, box_x1 = DIV_X0, DIV_X1 + 7
-        pad = 8   # horizontal padding inside box
+        pad   = 8   # horizontal padding inside box
+        pad_v = 7   # vertical padding top+bottom
         avail_w = box_x1 - box_x0 - pad * 2
+
+        # Try decreasing font sizes to keep text on one line
         font_sz = 12
+        for try_sz in [12, 11, 10, 9, 8]:
+            c.setFont(F_LBL, try_sz)
+            if c.stringWidth(full_text, F_LBL, try_sz) <= avail_w:
+                font_sz = try_sz
+                lines   = [full_text]
+                break
+        else:
+            # Still doesn't fit on one line — word-wrap at 10pt
+            font_sz = 10
+            c.setFont(F_LBL, font_sz)
+            words = full_text.split()
+            lines, cur = [], ""
+            for w in words:
+                trial = (cur + " " + w).strip()
+                if c.stringWidth(trial, F_LBL, font_sz) <= avail_w:
+                    cur = trial
+                else:
+                    if cur: lines.append(cur)
+                    cur = w
+            if cur: lines.append(cur)
+
         line_h  = font_sz * 1.3
-        pad_v   = 7   # vertical padding top+bottom
-
-        c.setFont(F_LBL, font_sz)
-        # Word-wrap full_text into lines that fit avail_w
-        words = full_text.split()
-        lines, cur = [], ""
-        for w in words:
-            trial = (cur + " " + w).strip()
-            if c.stringWidth(trial, F_LBL, font_sz) <= avail_w:
-                cur = trial
-            else:
-                if cur: lines.append(cur)
-                cur = w
-        if cur: lines.append(cur)
-
         n_lines = len(lines)
         box_h   = n_lines * line_h + pad_v * 2
         box_y   = res_y - 8
@@ -404,8 +426,9 @@ class KaryotypeReportGenerator:
         c.setLineWidth(0.6)
         c.rect(box_x0, box_bot, box_x1 - box_x0, box_h, fill=1, stroke=1)
 
+        iscn_color = self._iscn_color()
         c.setFont(F_LBL, font_sz)
-        c.setFillColor(RED)
+        c.setFillColor(iscn_color)
         box_cx = (box_x0 + box_x1) / 2
         # Draw lines top-to-bottom, vertically centred
         text_block_h = n_lines * line_h
@@ -484,20 +507,18 @@ class KaryotypeReportGenerator:
 
         y = self._draw_recommendations_block(c, y - 20)
         y = self._draw_methodology_block(c, y - 20)
-        y = self._draw_limitations_block(c, y - 20)
-        # Always draw References at end of page 2 — matches reference PDF layout.
-        self._draw_references_block(c, y - 20)
+        self._draw_limitations_block(c, y - 20)
+        # References moved to page 3 with signatures
 
     # ══════════════════════════════════════════════════════════════════════════
     # PAGE 3 — SIGNATURES (3-page layout)
     # ══════════════════════════════════════════════════════════════════════════
     def _page3_signatures(self, c):
-        """Page 3: only signatures (References are always on page 2 now)."""
+        """Page 3: References then signatures."""
         self._draw_chrome(c, 3, 3)
-        # "This report..." at pdfplumber top≈113.6 → y-14 baseline → glyph_top = y-3.6
-        # → RL y = 792 - 113.6 + 3.6 = 682 → _rl(67.8) - 42
-        y = _rl(67.8) - 42
-        self._draw_signatures(c, y)
+        y = _rl(67.8) - 52   # start just below header
+        y = self._draw_references_block(c, y)
+        self._draw_signatures(c, y - 20)
 
     # ══════════════════════════════════════════════════════════════════════════
     # COMMON DRAWING SUBROUTINES
@@ -583,36 +604,53 @@ class KaryotypeReportGenerator:
                               DIV_X0, bottom_y, avail_w, avail_h)
 
         elif n == 2:
-            # Side-by-side: Parthiban mosaic style
-            # From reference: Image22: x0=18, x1=282  Image25: x0=290, x1=587
-            gap = 8
+            # Side-by-side mosaic: force both images to render at equal size
+            gap   = 8
             img_w = (avail_w - gap) / 2
+
+            # Read both image dimensions to compute a common scale factor
+            def _get_dims(path):
+                try:
+                    from PIL import Image as PILImage
+                    with PILImage.open(path) as im:
+                        return im.size
+                except Exception:
+                    return (img_w, avail_h)
+
+            iw0, ih0 = _get_dims(self.images[0])
+            iw1, ih1 = _get_dims(self.images[1])
+            # Use the same scale (minimum of both) so rendered sizes are equal
+            common_scale = min(img_w / iw0, avail_h / ih0,
+                               img_w / iw1, avail_h / ih1)
             self._place_image(c, self.images[0],
-                              DIV_X0, bottom_y, img_w, avail_h)
+                              DIV_X0, bottom_y, img_w, avail_h, fixed_scale=common_scale)
             self._place_image(c, self.images[1],
-                              DIV_X0 + img_w + gap, bottom_y, img_w, avail_h)
+                              DIV_X0 + img_w + gap, bottom_y, img_w, avail_h, fixed_scale=common_scale)
 
         else:
-            # 3 images: scatter + zoom pair on left, full karyogram on right
-            left_w  = avail_w * 0.40
-            right_w = avail_w * 0.58
-            gap     = avail_w - left_w - right_w
+            # 3 images: scatter (top-left) + zoom pair (bottom-left) + karyogram (right)
+            # Proportions from reference PDF pdfplumber analysis
+            left_w  = avail_w * 0.37
+            right_w = avail_w * 0.59
+            gap     = avail_w - left_w - right_w   # ≈ 4% gap
 
-            # Left side: top = scatter, bottom = zoom pair (stacked)
-            scatter_h  = avail_h * 0.50
-            zoom_h     = avail_h * 0.48
-            zoom_gap   = avail_h - scatter_h - zoom_h
+            # Left side: scatter fills top 52%, zoom pair fills bottom 46%, 2% gap between
+            scatter_h = avail_h * 0.52
+            zoom_h    = avail_h * 0.46
+            mid_gap   = avail_h - scatter_h - zoom_h
             self._place_image(c, self.images[0],
-                              DIV_X0, bottom_y + zoom_h + zoom_gap, left_w, scatter_h)
+                              DIV_X0, bottom_y + zoom_h + mid_gap, left_w, scatter_h)
             self._place_image(c, self.images[1],
                               DIV_X0, bottom_y, left_w, zoom_h)
 
-            # Right side: full karyogram
+            # Right side: full karyogram spans full height, aligned bottom
             self._place_image(c, self.images[2],
                               DIV_X0 + left_w + gap, bottom_y, right_w, avail_h)
 
-    def _place_image(self, c, path: str, x: float, y: float, max_w: float, max_h: float):
-        """Draw image scaled to fit max_w × max_h; box is sized to the image, centred in slot."""
+    def _place_image(self, c, path: str, x: float, y: float, max_w: float, max_h: float,
+                     fixed_scale: float = None):
+        """Draw image scaled to fit max_w × max_h; box is sized to the image, centred in slot.
+        If fixed_scale is provided, use that scale instead of computing from dimensions."""
         try:
             from PIL import Image as PILImage
             with PILImage.open(path) as im:
@@ -620,15 +658,19 @@ class KaryotypeReportGenerator:
         except Exception:
             iw, ih = max_w, max_h
 
-        scale = min(max_w / iw, max_h / ih)
+        if fixed_scale is not None:
+            scale = fixed_scale
+        else:
+            scale = min(max_w / iw, max_h / ih)
+
         dw, dh = iw * scale, ih * scale
         # Centre the image within the available slot
         cx = x + (max_w - dw) / 2
         cy = y + (max_h - dh) / 2
-        # Draw border box exactly around the scaled image
+        # Draw border box exactly around the scaled image (visible gray border)
         c.setFillColor(WHITE)
-        c.setStrokeColor(HexColor('#D9D9D9'))
-        c.setLineWidth(0.8)
+        c.setStrokeColor(HexColor('#999999'))
+        c.setLineWidth(1.0)
         c.rect(cx, cy, dw, dh, fill=1, stroke=1)
         try:
             c.drawImage(path, cx, cy, dw, dh, mask="auto", preserveAspectRatio=True)
@@ -700,7 +742,15 @@ class KaryotypeReportGenerator:
         recs = self._get("RECOMMENDATIONS")
         c.setFillColor(BLACK)
         # Split multiple recommendations on bullet char or newline
-        items = [r.strip() for r in re.split(r'[\n\uf0b7\u2022]', recs) if r.strip()]
+        raw_items = [r.strip() for r in re.split(r'[\n\uf0b7\u2022]', recs) if r.strip()]
+        # Merge continuation fragments: if an item starts with lowercase it's a
+        # continuation of the previous item (e.g. line-break mid-sentence in Excel)
+        items = []
+        for item in raw_items:
+            if items and item and item[0].islower():
+                items[-1] = items[-1] + " " + item
+            else:
+                items.append(item)
         if len(items) > 1:
             y = _draw_bullet_list(c, items, DIV_X0, y - 25,
                                   DIV_X1 - DIV_X0, F_BODY, 11)
