@@ -634,22 +634,24 @@ class KaryotypeReportGenerator:
             right_w = avail_w * 0.59
             gap     = avail_w - left_w - right_w   # ≈ 4% gap
 
-            # Left column: scatter top-aligned, zoom composite bottom-aligned
-            scatter_h = avail_h * 0.52
-            zoom_h    = avail_h * 0.46
-            mid_gap   = avail_h - scatter_h - zoom_h
+            # Left column: scatter at top, zoom directly below (both top-aligned in their slots)
+            scatter_h = avail_h * 0.54
+            zoom_h    = avail_h * 0.44
+            mid_gap   = avail_h - scatter_h - zoom_h   # small gap between scatter and zoom
             self._place_image(c, self.images[0],
                               DIV_X0, bottom_y + zoom_h + mid_gap, left_w, scatter_h,
                               valign='top')
-            # Zoom composite already has its own built-in boxes for each chromosome
+            # Zoom composite: top-aligned so it sits close below scatter
+            # no extra border — image already has built-in individual boxes
             self._place_image(c, self.images[1],
-                              DIV_X0, bottom_y, left_w, zoom_h,
-                              valign='bottom', border=False)
+                              DIV_X0, bottom_y + mid_gap, left_w, zoom_h,
+                              valign='top', border=False)
 
-            # Right column: karyogram top-aligned so its top edge matches scatter top
+            # Right column: karyogram has built-in frame — no extra border to avoid double
+            # top-aligned so its top edge matches the scatter top edge
             self._place_image(c, self.images[2],
                               DIV_X0 + left_w + gap, bottom_y, right_w, avail_h,
-                              valign='top')
+                              valign='top', border=False)
 
     def _place_image(self, c, path: str, x: float, y: float, max_w: float, max_h: float,
                      fixed_scale: float = None, valign: str = 'center', border: bool = True):
