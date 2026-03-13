@@ -634,32 +634,76 @@ class KaryotypeReportGenerator:
             right_w = avail_w * 0.59
             gap     = avail_w - left_w - right_w   # ≈ 4% gap
 
-            # Left column: scatter at top, zoom directly below (both top-aligned in their slots)
+            # Left column: scatter at top, zoom directly below
             scatter_h = avail_h * 0.54
             zoom_h    = avail_h * 0.44
-            mid_gap   = avail_h - scatter_h - zoom_h   # small gap between scatter and zoom
+
+            # Compute scatter's actual rendered height so zoom sits just below it (not below slot)
+            try:
+                from PIL import Image as PILImage
+                with PILImage.open(self.images[0]) as _im:
+                    _s_iw, _s_ih = _im.size
+                _scatter_scale = min(left_w / _s_iw, scatter_h / _s_ih)
+                scatter_dh = _s_ih * _scatter_scale
+            except Exception:
+                scatter_dh = scatter_h
+
+            scatter_slot_y = bottom_y + avail_h - scatter_h   # bottom of scatter slot (top-aligned)
+            scatter_rendered_bottom = scatter_slot_y + scatter_h - scatter_dh  # actual bottom edge
+            IMG_GAP = 4
+            zoom_slot_y = scatter_rendered_bottom - IMG_GAP - zoom_h
+
+            # All three images have built-in frames — no extra border on any of them
             self._place_image(c, self.images[0],
-                              DIV_X0, bottom_y + zoom_h + mid_gap, left_w, scatter_h,
+                              DIV_X0, scatter_slot_y, left_w, scatter_h,
                               valign='top')
-            # Zoom composite: top-aligned so it sits close below scatter
-            # no extra border — image already has built-in individual boxes
             self._place_image(c, self.images[1],
-                              DIV_X0, bottom_y + mid_gap, left_w, zoom_h,
-                              valign='top', border=False)
+                              DIV_X0, zoom_slot_y, left_w, zoom_h,
+                              valign='top')
 
             # Right column: karyogram has built-in frame — no extra border to avoid double
             # top-aligned so its top edge matches the scatter top edge
             self._place_image(c, self.images[2],
                               DIV_X0 + left_w + gap, bottom_y, right_w, avail_h,
-                              valign='top', border=False)
+                              valign='top')
+
+    @staticmethod
+    def _image_has_border(path: str) -> bool:
+        """Return True if the image already has a built-in dark frame.
+        Scans insets 0-15px from each edge and takes the minimum average
+        brightness found. Built-in borders appear at different inset depths
+        across images, so scanning a range catches them all reliably.
+        Threshold 230: no-border images stay at 255; framed images drop to ~130-193."""
+        try:
+            from PIL import Image as PILImage
+            with PILImage.open(path) as im:
+                rgb = im.convert('RGB')
+                w, h = rgb.size
+            step_x = max(1, w // 20)
+            step_y = max(1, h // 20)
+            min_avg = 255.0
+            for inset in range(16):
+                i = inset
+                samples = []
+                for px in range(i, w - i, step_x):
+                    samples.append(rgb.getpixel((px, i)))
+                    samples.append(rgb.getpixel((px, h - 1 - i)))
+                for py in range(i, h - i, step_y):
+                    samples.append(rgb.getpixel((i, py)))
+                    samples.append(rgb.getpixel((w - 1 - i, py)))
+                avg = sum(sum(px) / 3 for px in samples) / len(samples)
+                if avg < min_avg:
+                    min_avg = avg
+            return min_avg < 230
+        except Exception:
+            return False
 
     def _place_image(self, c, path: str, x: float, y: float, max_w: float, max_h: float,
-                     fixed_scale: float = None, valign: str = 'center', border: bool = True):
-        """Draw image scaled to fit max_w × max_h with a single black border.
+                     fixed_scale: float = None, valign: str = 'center'):
+        """Draw image scaled to fit max_w × max_h, centred horizontally.
         valign : 'center' (default) | 'top' | 'bottom'
-        border : False to skip the border (e.g. composite images with built-in boxes).
-        Removes preserveAspectRatio=True from drawImage to avoid the double-border
-        gap caused by ReportLab rescaling the image inside the given rect."""
+        A 1pt border is drawn automatically only when the image has no built-in frame
+        (detected by sampling edge-pixel brightness)."""
         try:
             from PIL import Image as PILImage
             with PILImage.open(path) as im:
@@ -683,13 +727,13 @@ class KaryotypeReportGenerator:
         else:
             cy = y + (max_h - dh) / 2  # centred
 
-        # Draw image — no preserveAspectRatio so it fills exactly (cx,cy,dw,dh)
         try:
             c.drawImage(path, cx, cy, dw, dh, mask="auto")
         except Exception:
             pass
-        # Single black border drawn on top
-        if border:
+
+        # Draw border only if the image doesn't already have its own frame
+        if not self._image_has_border(path):
             c.setStrokeColor(BLACK)
             c.setLineWidth(1.0)
             c.rect(cx, cy, dw, dh, fill=0, stroke=1)
