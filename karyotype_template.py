@@ -468,13 +468,13 @@ class KaryotypeReportGenerator:
 
         y = _draw_section_heading(c, "Interpretation", y)
         c.setFillColor(BLACK)
-        y = _draw_justified(c, self._get("INTERPRETATION"), DIV_X0, y - 14,
+        y = _draw_justified(c, self._get("INTERPRETATION"), DIV_X0, y - 10,
                             DIV_X1 - DIV_X0, F_BODY, 11)
 
-        y = self._draw_recommendations_block(c, y - 20)
-        y = self._draw_methodology_block(c, y - 20)
-        y = self._draw_limitations_block(c, y - 20)
-        y = self._draw_references_block(c, y - 20)
+        y = self._draw_recommendations_block(c, y - 12)
+        y = self._draw_methodology_block(c, y - 12)
+        y = self._draw_limitations_block(c, y - 12)
+        y = self._draw_references_block(c, y - 8)
         self._draw_signatures(c, y - 11)
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -493,22 +493,22 @@ class KaryotypeReportGenerator:
 
         y = _draw_section_heading(c, "Interpretation", y)
         c.setFillColor(BLACK)
-        y = _draw_justified(c, self._get("INTERPRETATION"), DIV_X0, y - 14,
+        y = _draw_justified(c, self._get("INTERPRETATION"), DIV_X0, y - 10,
                             DIV_X1 - DIV_X0, F_BODY, 11)
 
         # Comments section (hidden if empty, but rendered if present)
         comments = self._get("COMMENTS")
         if comments:
-            y = y - 20
+            y = y - 12
             y = _draw_section_heading(c, "Comments", y)
             c.setFillColor(BLACK)
-            y = _draw_justified(c, comments, DIV_X0, y - 14,
+            y = _draw_justified(c, comments, DIV_X0, y - 10,
                                 DIV_X1 - DIV_X0, F_BODY, 11)
 
-        y = self._draw_recommendations_block(c, y - 20)
-        y = self._draw_methodology_block(c, y - 20)
-        self._draw_limitations_block(c, y - 20)
-        # References moved to page 3 with signatures
+        y = self._draw_recommendations_block(c, y - 12)
+        y = self._draw_methodology_block(c, y - 12)
+        self._draw_limitations_block(c, y - 12)
+        # References moved to page 3 with signatures (spacing adjusted there)
 
     # ══════════════════════════════════════════════════════════════════════════
     # PAGE 3 — SIGNATURES (3-page layout)
@@ -813,14 +813,14 @@ class KaryotypeReportGenerator:
             else:
                 items.append(item)
         if len(items) > 1:
-            y = _draw_bullet_list(c, items, DIV_X0, y - 25,
+            y = _draw_bullet_list(c, items, DIV_X0, y - 18,
                                   DIV_X1 - DIV_X0, F_BODY, 11)
         elif items:
             # Single recommendation → plain text using the parsed (bullet-stripped) item
-            y = _draw_justified(c, items[0], DIV_X0, y - 14,
+            y = _draw_justified(c, items[0], DIV_X0, y - 10,
                                 DIV_X1 - DIV_X0, F_BODY, 11)
         else:
-            y = _draw_justified(c, recs, DIV_X0, y - 14,
+            y = _draw_justified(c, recs, DIV_X0, y - 10,
                                 DIV_X1 - DIV_X0, F_BODY, 11)
         return y
 
@@ -832,7 +832,7 @@ class KaryotypeReportGenerator:
                 "ruled out at a banding resolution suitable for the referral indication, in "
                 "accordance with current ISCN guidelines.")
         c.setFillColor(BLACK)
-        y = _draw_justified(c, text, DIV_X0, y - 14, DIV_X1 - DIV_X0, F_BODY, 11)
+        y = _draw_justified(c, text, DIV_X0, y - 10, DIV_X1 - DIV_X0, F_BODY, 11)
         return y
 
     def _draw_limitations_block(self, c, y: float) -> float:
@@ -844,7 +844,7 @@ class KaryotypeReportGenerator:
             "Low-level mosaicism may not be detected.",
         ]
         c.setFillColor(BLACK)
-        y = _draw_bullet_list(c, items, DIV_X0, y - 25, DIV_X1 - DIV_X0, F_BODY, 11)
+        y = _draw_bullet_list(c, items, DIV_X0, y - 18, DIV_X1 - DIV_X0, F_BODY, 11)
         return y
 
     def _draw_references_block(self, c, y: float) -> float:
@@ -861,8 +861,8 @@ class KaryotypeReportGenerator:
         ref_w = DIV_X1 - DIV_X0 - indent
         # Use Paragraph for justified text with inline italic via XML markup
         ref_italic = F_ITALIC  # Calibri-Italic (matches reference PDF)
-        # First ref needs larger gap from heading (~33pt); subsequent refs smaller gap (~10pt)
-        first_gap = 33
+        # First ref needs smaller gap from heading (~14pt); subsequent refs smaller gap (~10pt)
+        first_gap = 14
         inter_gap = 10
         for i, (num, normal_part, italic_part) in enumerate(refs):
             y -= (first_gap if i == 0 else inter_gap)
