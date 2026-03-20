@@ -1,0 +1,18 @@
+If,
+Autosomes and  Sex chromosomes- normal (mention ISCN in green colour)
+Autosomes or Sex chromosomes- Abnormal (mention ISCN in red colour)
+Autosomes or Sex chromosomes- variant (mention ISCN in black colour)
+
+46,XX- NORAML FEMALE 
+46,XY- NORMAL MALE 
+
+MOSAIC - 2 IMAGES 
+TRANSLOCATION- 3 IMAGES 
+
+RECOMMENDATIONS - SAME FOR ALL NORMAL REPORTS 
+
+TEST METHODOLOGY, LIMITATIONS, REFERENCES - SAME FOR ALL NORMAL AND ABNORMAL REPORTS 
+
+FOR VARIANT , ABNORMAL REPORTS - INTERPRETATION,COMMENTS AND RECOMMENDATIONS (3 TITLES)
+
+
