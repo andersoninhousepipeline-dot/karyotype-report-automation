@@ -232,16 +232,56 @@ def _detect_report_type(iscn: str) -> str:
 
 
 def _find_images_for_sample(sample_no: str, search_dir: str) -> list:
+    """
+    Find images matching sample number in search_dir.
+    Handles Windows/Linux path differences and case-insensitive matching.
+
+    Matches:
+      - Exact: 260154818.jpg
+      - Numbered: 260161295 1.jpg, 260161295 2.jpg
+    """
     if not sample_no or not search_dir or not os.path.isdir(search_dir):
         return []
+
     sample_no = str(sample_no).strip()
+    if not sample_no:
+        return []
+
     results = []
-    for ext in ("*.jpg", "*.jpeg", "*.JPG", "*.JPEG", "*.png", "*.PNG"):
-        for fpath in glob.glob(os.path.join(search_dir, ext)):
-            fname = os.path.splitext(os.path.basename(fpath))[0]
+
+    # Use Path for better cross-platform compatibility
+    search_path = Path(search_dir)
+
+    # Search for common image extensions (case-insensitive on Windows, explicit on Linux)
+    extensions = ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']
+
+    try:
+        # List all files in directory
+        for file_path in search_path.iterdir():
+            if not file_path.is_file():
+                continue
+
+            # Check if extension matches (case-insensitive comparison)
+            if file_path.suffix.lower() not in [ext.lower() for ext in extensions]:
+                continue
+
+            # Extract filename without extension
+            fname = file_path.stem
+
+            # Match patterns:
+            # 1. Exact match: filename == sample_no
+            # 2. Numbered: sample_no followed by space and digit(s)
             if fname == sample_no or re.match(rf"^{re.escape(sample_no)}\s+\d+$", fname):
-                results.append(fpath)
-    results.sort()
+                results.append(str(file_path.absolute()))
+
+        # Sort results for consistent ordering
+        results.sort(key=lambda x: Path(x).name)
+
+    except (OSError, PermissionError) as e:
+        # Handle permission errors or invalid paths gracefully
+        print(f"Warning: Could not access directory {search_dir}: {e}")
+        return []
+
     return results
 
 
@@ -761,8 +801,9 @@ class KaryotypeReportApp(QMainWindow):
         d = QFileDialog.getExistingDirectory(
             self, "Select Image Folder", self._image_search_dir)
         if d:
-            self._image_search_dir = d
-            self.settings.setValue("image_search_dir", d)
+            # Normalize path for cross-platform compatibility
+            self._image_search_dir = os.path.normpath(d)
+            self.settings.setValue("image_search_dir", self._image_search_dir)
             sn_w, _ = self._manual_inputs["SAMPLE NUMBER"]
             if isinstance(sn_w, QLineEdit) and sn_w.text().strip():
                 self._auto_discover_images(sn_w.text().strip())
@@ -1306,14 +1347,15 @@ class KaryotypeReportApp(QMainWindow):
         d = QFileDialog.getExistingDirectory(
             self, "Select Image Folder", self._image_search_dir)
         if d:
-            self._image_search_dir = d
-            self.settings.setValue("image_search_dir", d)
-            self._bulk_img_dir_lbl.setText(d)
+            # Normalize path for cross-platform compatibility
+            self._image_search_dir = os.path.normpath(d)
+            self.settings.setValue("image_search_dir", self._image_search_dir)
+            self._bulk_img_dir_lbl.setText(self._image_search_dir)
             # Re-scan all images
             if self.bulk_rows:
                 for i, row in enumerate(self.bulk_rows):
                     self._bulk_images[i] = _find_images_for_sample(
-                        row.get("SAMPLE NUMBER", ""), d)
+                        row.get("SAMPLE NUMBER", ""), self._image_search_dir)
                 self._populate_bulk_table()
 
     def _bulk_browse_output(self):
@@ -1528,8 +1570,9 @@ build_windows.bat
             self._bulk_out_lbl.setStyleSheet("color:black;padding:2px;")
         img_dir = self.settings.value("image_search_dir", "")
         if img_dir:
-            self._image_search_dir = img_dir
-            self._bulk_img_dir_lbl.setText(img_dir)
+            # Normalize path for cross-platform compatibility
+            self._image_search_dir = os.path.normpath(img_dir)
+            self._bulk_img_dir_lbl.setText(self._image_search_dir)
 
 
 # ─── Entry point ───────────────────────────────────────────────────────────────

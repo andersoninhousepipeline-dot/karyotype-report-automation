@@ -85,6 +85,35 @@ python karyotype_report_generator.py
 - Check if your antivirus is blocking it
 - Look for error messages in the terminal window
 
+### Image Auto-Discovery Not Working
+
+If the application cannot find karyogram images by sample number:
+
+**1. Test Image Discovery**
+```cmd
+python test_image_discovery.py "C:\Path\To\Images" 260154818
+```
+Replace with your actual image folder path and sample number.
+
+**2. Check Image Filenames**
+Images must be named exactly:
+- `260154818.jpg` (exact match)
+- `260154818 1.jpg` (with space and number)
+- `260154818 2.jpg` (additional images)
+
+**3. Supported File Extensions**
+- `.jpg`, `.jpeg`, `.png` (case-insensitive)
+
+**4. Common Issues**
+- **Extra spaces**: `260154818  1.jpg` (two spaces) won't match
+- **Underscores**: `260154818_1.jpg` won't match (use space)
+- **Wrong extension**: `.tif`, `.bmp` not supported
+- **Subdirectories**: Images must be in the selected folder (not subfolders)
+- **File permissions**: Ensure the application can read the image folder
+
+**5. Manual Workaround**
+If auto-discovery fails, use the **"Edit / Add Images..."** button to manually select images for each patient.
+
 ---
 
 ## Quick Start After Installation
