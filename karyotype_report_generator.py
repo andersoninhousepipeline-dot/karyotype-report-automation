@@ -585,6 +585,15 @@ class KaryotypeReportApp(QMainWindow):
         img_btn_row.addStretch()
         img_lay.addWidget(self._lbl_images)
         img_lay.addLayout(img_btn_row)
+
+        self._manual_img_dir_lbl = QLabel()
+        self._manual_img_dir_lbl.setStyleSheet("color:gray;font-size:10px;")
+        if self._image_search_dir:
+            self._manual_img_dir_lbl.setText(f"Folder: {self._image_search_dir}")
+        else:
+            self._manual_img_dir_lbl.setText("Image folder not set. Auto-discovery disabled.")
+        img_lay.addWidget(self._manual_img_dir_lbl)
+
         left_vbox.addWidget(img_grp)
 
         # Generate section
@@ -830,6 +839,7 @@ class KaryotypeReportApp(QMainWindow):
         if d:
             # Normalize path for cross-platform compatibility
             self._image_search_dir = os.path.normpath(d)
+            self._manual_img_dir_lbl.setText(f"Folder: {self._image_search_dir}")
             self.settings.setValue("image_search_dir", self._image_search_dir)
             sn_w, _ = self._manual_inputs["SAMPLE NUMBER"]
             if isinstance(sn_w, QLineEdit) and sn_w.text().strip():
