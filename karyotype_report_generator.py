@@ -404,7 +404,8 @@ class ImageEditorDialog(QDialog):
     def _add(self):
         files, _ = QFileDialog.getOpenFileNames(
             self, "Select Karyogram Image(s)", self._search_dir,
-            "Images (*.jpg *.jpeg *.JPG *.JPEG *.png *.PNG)")
+            "Images (*.jpg *.jpeg *.JPG *.JPEG *.png *.PNG)",
+            options=QFileDialog.Option.DontUseNativeDialog)
         for f in files:
             f = os.path.normpath(f)   # Fix: normalize slashes for Windows
             r = self.table.rowCount()
@@ -824,7 +825,8 @@ class KaryotypeReportApp(QMainWindow):
 
     def _manual_set_image_dir(self):
         d = QFileDialog.getExistingDirectory(
-            self, "Select Image Folder", self._image_search_dir)
+            self, "Select Karyogram Search Folder", self._image_search_dir,
+            options=QFileDialog.Option.DontUseNativeDialog)
         if d:
             # Normalize path for cross-platform compatibility
             self._image_search_dir = os.path.normpath(d)
@@ -834,7 +836,9 @@ class KaryotypeReportApp(QMainWindow):
                 self._auto_discover_images(sn_w.text().strip())
 
     def _manual_browse_output(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Output Folder")
+        folder = QFileDialog.getExistingDirectory(
+            self, "Select Output Folder",
+            options=QFileDialog.Option.DontUseNativeDialog)
         if folder:
             self._manual_out_lbl.setText(folder)
             self._manual_out_lbl.setStyleSheet("padding:4px;color:black;")
@@ -875,7 +879,8 @@ class KaryotypeReportApp(QMainWindow):
 
     def _manual_save_draft(self):
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Draft", "karyotype_draft.json", "JSON (*.json)")
+            self, "Save Draft", "karyotype_draft.json", "JSON (*.json)",
+            options=QFileDialog.Option.DontUseNativeDialog)
         if not path:
             return
         draft = {
@@ -889,7 +894,8 @@ class KaryotypeReportApp(QMainWindow):
 
     def _manual_load_draft(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Load Draft", "", "JSON (*.json)")
+            self, "Load Draft", "", "JSON (*.json)",
+            options=QFileDialog.Option.DontUseNativeDialog)
         if not path:
             return
         try:
@@ -1150,7 +1156,8 @@ class KaryotypeReportApp(QMainWindow):
     def _bulk_load_excel(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Open Excel File", "",
-            "Excel Files (*.xls *.xlsx *.xlsm)")
+            "Excel Files (*.xls *.xlsx *.xlsm)",
+            options=QFileDialog.Option.DontUseNativeDialog)
         if not path:
             return
         try:
@@ -1393,7 +1400,8 @@ class KaryotypeReportApp(QMainWindow):
 
     def _bulk_browse_img_dir(self):
         d = QFileDialog.getExistingDirectory(
-            self, "Select Image Folder", self._image_search_dir)
+            self, "Select Image Folder", self._image_search_dir,
+            options=QFileDialog.Option.DontUseNativeDialog)
         if d:
             # Normalize path for cross-platform compatibility
             self._image_search_dir = os.path.normpath(d)
@@ -1436,7 +1444,8 @@ class KaryotypeReportApp(QMainWindow):
         out_dir = self._bulk_out_lbl.text()
         if not out_dir or out_dir == "No folder selected":
             out_dir = QFileDialog.getExistingDirectory(
-                self, "Select Output Folder")
+                self, "Select Output Folder",
+                options=QFileDialog.Option.DontUseNativeDialog)
             if not out_dir:
                 return
             self._bulk_out_lbl.setText(out_dir)
