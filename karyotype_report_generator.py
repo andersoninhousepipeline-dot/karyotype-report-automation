@@ -272,7 +272,7 @@ def _find_images_for_sample(sample_no: str, search_dir: str) -> list:
             # 1. Exact match: filename == sample_no
             # 2. Numbered: sample_no followed by space and digit(s)
             if fname == sample_no or re.match(rf"^{re.escape(sample_no)}\s+\d+$", fname):
-                results.append(str(file_path.absolute()))
+                results.append(os.path.normpath(str(file_path.absolute())))
 
         # Sort results for consistent ordering
         results.sort(key=lambda x: Path(x).name)
@@ -300,16 +300,20 @@ class PreviewWorker(QThread):
     finished = pyqtSignal(str)
     error    = pyqtSignal(str)
 
-    def __init__(self, data_row: dict, image_paths: list, tmp_pdf: str):
+    def __init__(self, data_row: dict, image_paths: list, tmp_pdf: str,
+                 include_logo: bool = True):
         super().__init__()
         self.data_row    = data_row
         self.image_paths = image_paths
         self.tmp_pdf     = tmp_pdf
+        self.include_logo = include_logo
 
     def run(self):
         try:
             tmp_dir = os.path.dirname(self.tmp_pdf)
-            gen = KaryotypeReportGenerator(self.data_row, self.image_paths, tmp_dir)
+            gen = KaryotypeReportGenerator(
+                self.data_row, self.image_paths, tmp_dir,
+                include_logo=self.include_logo)
             gen.filepath = self.tmp_pdf
             gen.filename = os.path.basename(self.tmp_pdf)
             gen.generate()
@@ -323,10 +327,11 @@ class BulkWorker(QThread):
     progress = pyqtSignal(int, str)
     finished = pyqtSignal(int, list)
 
-    def __init__(self, jobs: list, output_dir: str):
+    def __init__(self, jobs: list, output_dir: str, include_logo: bool = True):
         super().__init__()
-        self.jobs       = jobs
-        self.output_dir = output_dir
+        self.jobs        = jobs
+        self.output_dir  = output_dir
+        self.include_logo = include_logo
 
     def run(self):
         ok, errs = 0, []
@@ -336,7 +341,9 @@ class BulkWorker(QThread):
             try:
                 self.progress.emit(int((i - 1) / total * 100),
                                    f"Generating {i}/{total}: {name}…")
-                KaryotypeReportGenerator(row, imgs, self.output_dir).generate()
+                KaryotypeReportGenerator(
+                    row, imgs, self.output_dir,
+                    include_logo=self.include_logo).generate()
                 ok += 1
             except Exception as e:
                 import traceback
@@ -399,6 +406,7 @@ class ImageEditorDialog(QDialog):
             self, "Select Karyogram Image(s)", self._search_dir,
             "Images (*.jpg *.jpeg *.JPG *.JPEG *.png *.PNG)")
         for f in files:
+            f = os.path.normpath(f)   # Fix: normalize slashes for Windows
             r = self.table.rowCount()
             self.table.insertRow(r)
             self.table.setItem(r, 0, QTableWidgetItem(str(r + 1)))
@@ -592,7 +600,21 @@ class KaryotypeReportApp(QMainWindow):
         btn_out.clicked.connect(self._manual_browse_output)
         out_row.addWidget(self._manual_out_lbl, 1)
         out_row.addWidget(btn_out)
-        gen_layout.addLayout(out_row)
+        # Logo row
+        logo_row = QHBoxLayout()
+        logo_lbl = QLabel("Logo:")
+        self._manual_logo_combo = QComboBox()
+        self._manual_logo_combo.addItems(["With Logo", "Without Logo"])
+        saved_logo = self.settings.value("logo_mode", "With Logo")
+        idx_logo = self._manual_logo_combo.findText(saved_logo)
+        if idx_logo >= 0:
+            self._manual_logo_combo.setCurrentIndex(idx_logo)
+        self._manual_logo_combo.currentTextChanged.connect(
+            lambda txt: self.settings.setValue("logo_mode", txt))
+        logo_row.addWidget(logo_lbl)
+        logo_row.addWidget(self._manual_logo_combo)
+        logo_row.addStretch()
+        gen_layout.addLayout(logo_row)
 
         self._manual_gen_btn = QPushButton("Generate Report")
         self._manual_gen_btn.setStyleSheet(
@@ -724,8 +746,11 @@ class KaryotypeReportApp(QMainWindow):
         if not data.get("NAME"):
             self._preview_status.setText("Enter a Patient Name to enable preview.")
             return
+        include_logo = (self._manual_logo_combo.currentText() == "With Logo")
         self._preview_status.setText("Generating preview…")
-        self._preview_worker = PreviewWorker(data, self._image_paths, self._tmp_pdf)
+        self._preview_worker = PreviewWorker(
+            data, self._image_paths, self._tmp_pdf,
+            include_logo=include_logo)
         self._preview_worker.finished.connect(self._on_preview_ready)
         self._preview_worker.error.connect(
             lambda e: self._preview_status.setText(
@@ -825,8 +850,11 @@ class KaryotypeReportApp(QMainWindow):
         if not data.get("NAME"):
             QMessageBox.warning(self, "Missing Data", "Patient Name is required.")
             return
+        include_logo = (self._manual_logo_combo.currentText() == "With Logo")
         try:
-            gen  = KaryotypeReportGenerator(data, self._image_paths, out_dir)
+            gen  = KaryotypeReportGenerator(
+                data, self._image_paths, out_dir,
+                include_logo=include_logo)
             path = gen.generate()
             box  = QMessageBox(self)
             box.setWindowTitle("Report Generated")
@@ -870,7 +898,8 @@ class KaryotypeReportApp(QMainWindow):
             data = draft.get("data", {})
             data["REPORT_TYPE"] = draft.get("report_type", "")
             self._set_manual_data(data)
-            self._image_paths = draft.get("images", [])
+            # Fix: normalize paths loaded from JSON (Windows compatibility)
+            self._image_paths = [os.path.normpath(p) for p in draft.get("images", [])]
             self._refresh_manual_image_label()
             self._schedule_preview()
             self.statusBar().showMessage(f"Draft loaded: {path}")
@@ -1090,6 +1119,22 @@ class KaryotypeReportApp(QMainWindow):
         act_row.addWidget(self._bulk_gen_all_btn)
         act_row.addStretch()
         gen_layout.addLayout(act_row)
+
+        # Bulk logo row
+        bulk_logo_row = QHBoxLayout()
+        bulk_logo_lbl = QLabel("Logo:")
+        self._bulk_logo_combo = QComboBox()
+        self._bulk_logo_combo.addItems(["With Logo", "Without Logo"])
+        saved_bulk_logo = self.settings.value("bulk_logo_mode", "With Logo")
+        idx_bulk_logo = self._bulk_logo_combo.findText(saved_bulk_logo)
+        if idx_bulk_logo >= 0:
+            self._bulk_logo_combo.setCurrentIndex(idx_bulk_logo)
+        self._bulk_logo_combo.currentTextChanged.connect(
+            lambda txt: self.settings.setValue("bulk_logo_mode", txt))
+        bulk_logo_row.addWidget(bulk_logo_lbl)
+        bulk_logo_row.addWidget(self._bulk_logo_combo)
+        bulk_logo_row.addStretch()
+        gen_layout.addLayout(bulk_logo_row)
 
         self._bulk_prog_lbl  = QLabel("")
         self._bulk_prog_lbl.setVisible(False)
@@ -1325,7 +1370,10 @@ class KaryotypeReportApp(QMainWindow):
             return
         self._bulk_preview_status.setText("Generating preview…")
         imgs = self._bulk_images[self._bulk_current_row]
-        self._bulk_preview_worker = PreviewWorker(d, imgs, self._bulk_tmp_pdf)
+        include_logo = (self._bulk_logo_combo.currentText() == "With Logo")
+        self._bulk_preview_worker = PreviewWorker(
+            d, imgs, self._bulk_tmp_pdf,
+            include_logo=include_logo)
         self._bulk_preview_worker.finished.connect(self._bulk_on_preview_ready)
         self._bulk_preview_worker.error.connect(
             lambda e: self._bulk_preview_status.setText(
@@ -1401,7 +1449,9 @@ class KaryotypeReportApp(QMainWindow):
         self._bulk_gen_sel_btn.setEnabled(False)
         self._bulk_gen_all_btn.setEnabled(False)
 
-        self._gen_worker = BulkWorker(jobs, out_dir)
+        self._gen_worker = BulkWorker(
+            jobs, out_dir,
+            include_logo=(self._bulk_logo_combo.currentText() == "With Logo"))
         self._gen_worker.progress.connect(self._on_bulk_progress)
         self._gen_worker.finished.connect(self._on_bulk_finished)
         self._gen_worker.start()

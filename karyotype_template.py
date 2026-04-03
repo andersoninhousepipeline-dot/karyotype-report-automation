@@ -285,17 +285,20 @@ class KaryotypeReportGenerator:
         Directory where the PDF will be saved.
     """
 
-    def __init__(self, data_row: dict, image_paths: list, output_dir: str):
+    def __init__(self, data_row: dict, image_paths: list, output_dir: str,
+                 include_logo: bool = True):
         self.d      = {k.strip().upper(): _clean(v) for k, v in data_row.items()}
         self.images = [p for p in image_paths if p and os.path.isfile(p)]
         self.out    = output_dir
+        self.include_logo = include_logo
 
-        # Derive filename: "{Name} ({SampleNumber}) PBCKT with logo.pdf"
+        # Derive filename: "{Name} ({SampleNumber}) PBCKT with/without logo.pdf"
         name   = " ".join((self._get("NAME") or "Unknown").split())
         sample = " ".join((self._get("SAMPLE NUMBER") or "NoSN").split())
         # Remove characters not safe for filenames (keep alphanumeric, spaces, hyphens, parens, dots)
         safe_name = re.sub(r'[^\w\s\-\(\)\.]', '', name).strip()
-        self.filename = f"{safe_name} ({sample}) PBCKT with logo.pdf"
+        logo_tag = "with logo" if include_logo else "without logo"
+        self.filename = f"{safe_name} ({sample}) PBCKT {logo_tag}.pdf"
         self.filepath = os.path.join(output_dir, self.filename)
 
         # Determine layout variant
@@ -525,8 +528,9 @@ class KaryotypeReportGenerator:
     # ══════════════════════════════════════════════════════════════════════════
     def _draw_chrome(self, c, page_num: int, total_pages: int):
         """Header image, footer image, and page number."""
-        c.drawImage(_img(_assets.HEADER), HDR_X, HDR_Y, HDR_W, HDR_H, mask="auto")
-        c.drawImage(_img(_assets.FOOTER), FTR_X, FTR_Y, FTR_W, FTR_H, mask="auto")
+        if self.include_logo:
+            c.drawImage(_img(_assets.HEADER), HDR_X, HDR_Y, HDR_W, HDR_H, mask="auto")
+            c.drawImage(_img(_assets.FOOTER), FTR_X, FTR_Y, FTR_W, FTR_H, mask="auto")
 
         # Page number  "N | P a g e"  — the footer image already contains the
         # "Anderson Clinical Genetics..." line; we only need to stamp the page number.
