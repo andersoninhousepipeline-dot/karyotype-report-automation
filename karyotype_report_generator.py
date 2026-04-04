@@ -265,13 +265,17 @@ def _find_images_for_sample(sample_no: str, search_dir: str) -> list:
             if file_path.suffix.lower() not in [ext.lower() for ext in extensions]:
                 continue
 
-            # Extract filename without extension
-            fname = file_path.stem
+            # Extract filename without extension and strip spaces
+            fname = file_path.stem.strip()
+
+            # Normalize fname: convert common separators to spaces, collapse multiple spaces
+            clean_fname = re.sub(r'[_+\-]', ' ', fname)
+            clean_fname = re.sub(r'\s+', ' ', clean_fname).strip()
 
             # Match patterns:
-            # 1. Exact match: filename == sample_no
+            # 1. Exact match: clean_filename == sample_no
             # 2. Numbered: sample_no followed by space and digit(s)
-            if fname == sample_no or re.match(rf"^{re.escape(sample_no)}\s+\d+$", fname):
+            if clean_fname == sample_no or re.match(rf"^{re.escape(sample_no)}\s+\d+$", clean_fname):
                 results.append(os.path.normpath(str(file_path.absolute())))
 
         # Sort results for consistent ordering
