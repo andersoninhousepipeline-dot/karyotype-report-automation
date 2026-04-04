@@ -36,7 +36,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QMessageBox, QProgressBar,
     QGroupBox, QFormLayout, QScrollArea, QComboBox,
     QStyle, QSplitter, QTextBrowser, QDialog, QDialogButtonBox,
-    QHeaderView, QSizePolicy, QTextEdit, QAbstractItemView,
+    QHeaderView, QSizePolicy, QTextEdit, QAbstractItemView, QGridLayout,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSettings, QTimer, QItemSelectionModel
 from PyQt6.QtGui import QPixmap, QFont, QColor, QIcon
@@ -479,8 +479,8 @@ class KaryotypeReportApp(QMainWindow):
         ico = _resource_path("assets/karyotype_icon.png")
         if os.path.isfile(ico):
             self.setWindowIcon(QIcon(ico))
-        self.setMinimumSize(1300, 800)
-        self.resize(1450, 880)
+        self.setMinimumSize(1100, 680)
+        self.resize(1400, 860)
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -1425,7 +1425,9 @@ class KaryotypeReportApp(QMainWindow):
                 self._populate_bulk_table()
 
     def _bulk_browse_output(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Output Folder")
+        folder = QFileDialog.getExistingDirectory(
+            self, "Select Output Folder",
+            options=QFileDialog.Option.DontUseNativeDialog)
         if folder:
             self._bulk_out_lbl.setText(folder)
             self._bulk_out_lbl.setStyleSheet("color:black;padding:2px;")
