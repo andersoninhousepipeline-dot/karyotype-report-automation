@@ -947,47 +947,46 @@ class KaryotypeReportApp(QMainWindow):
         tab  = QWidget()
         vbox = QVBoxLayout(tab)
 
-        # ── 1. Excel file ──────────────────────────────────────────────────────
-        file_grp = QGroupBox("1. Load Excel File")
-        file_row = QHBoxLayout(file_grp)
+        # ── 1. Setup (Excel, Images, Output) ───────────────────────────────────
+        setup_grp = QGroupBox("1. Setup")
+        setup_grid = QGridLayout(setup_grp)
+        setup_grid.setVerticalSpacing(4)
+        
+        # Excel
+        setup_grid.addWidget(QLabel("Excel File:"), 0, 0)
         self._bulk_file_lbl = QLabel("No file loaded")
         self._bulk_file_lbl.setStyleSheet("color:gray;font-style:italic;padding:2px;")
         btn_browse = QPushButton("Browse…")
-        btn_browse.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogStart))
+        btn_browse.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogStart))
         btn_browse.clicked.connect(self._bulk_load_excel)
-        file_row.addWidget(self._bulk_file_lbl, 1)
-        file_row.addWidget(btn_browse)
-        vbox.addWidget(file_grp)
-
-        # ── 2. Image Folder ────────────────────────────────────────────────────
-        imgf_grp = QGroupBox("2. Image Folder  (auto-discovers karyogram images by Sample Number)")
-        imgf_row = QHBoxLayout(imgf_grp)
+        setup_grid.addWidget(self._bulk_file_lbl, 0, 1)
+        setup_grid.addWidget(btn_browse, 0, 2)
+        
+        # Image Folder
+        setup_grid.addWidget(QLabel("Image Folder:"), 1, 0)
         self._bulk_img_dir_lbl = QLabel(self._image_search_dir)
         self._bulk_img_dir_lbl.setStyleSheet("padding:2px;")
         btn_imgf = QPushButton("Browse…")
-        btn_imgf.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
+        btn_imgf.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
         btn_imgf.clicked.connect(self._bulk_browse_img_dir)
-        imgf_row.addWidget(self._bulk_img_dir_lbl, 1)
-        imgf_row.addWidget(btn_imgf)
-        vbox.addWidget(imgf_grp)
+        setup_grid.addWidget(self._bulk_img_dir_lbl, 1, 1)
+        setup_grid.addWidget(btn_imgf, 1, 2)
 
-        # ── 3. Output Folder ───────────────────────────────────────────────────
-        out_grp = QGroupBox("3. Output Folder")
-        out_row = QHBoxLayout(out_grp)
+        # Output Folder
+        setup_grid.addWidget(QLabel("Output Folder:"), 2, 0)
         self._bulk_out_lbl = QLabel("No folder selected")
         self._bulk_out_lbl.setStyleSheet("color:gray;font-style:italic;padding:2px;")
         btn_out = QPushButton("Browse…")
-        btn_out.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
+        btn_out.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
         btn_out.clicked.connect(self._bulk_browse_output)
-        out_row.addWidget(self._bulk_out_lbl, 1)
-        out_row.addWidget(btn_out)
-        vbox.addWidget(out_grp)
+        setup_grid.addWidget(self._bulk_out_lbl, 2, 1)
+        setup_grid.addWidget(btn_out, 2, 2)
+        
+        setup_grid.setColumnStretch(1, 1)
+        vbox.addWidget(setup_grp)
 
-        # ── 4. Review & Edit Patients ──────────────────────────────────────────
-        data_grp    = QGroupBox("4. Review & Edit Patients")
+        # ── 2. Review & Edit Patients ──────────────────────────────────────────
+        data_grp    = QGroupBox("2. Review & Edit Patients")
         data_layout = QVBoxLayout(data_grp)
 
         # Toolbar
@@ -1118,30 +1117,10 @@ class KaryotypeReportApp(QMainWindow):
         data_layout.addWidget(main_splitter, 1)
         vbox.addWidget(data_grp, 1)
 
-        # ── 5. Generate ────────────────────────────────────────────────────────
-        gen_grp    = QGroupBox("5. Generate Reports")
-        gen_layout = QVBoxLayout(gen_grp)
+        # ── 3. Generate ────────────────────────────────────────────────────────
+        gen_grp    = QGroupBox("3. Generate Reports")
+        gen_layout = QHBoxLayout(gen_grp)
 
-        act_row = QHBoxLayout()
-        self._bulk_gen_sel_btn = QPushButton("Generate Selected")
-        self._bulk_gen_sel_btn.setStyleSheet(
-            "background-color:#1F497D;color:white;font-weight:bold;padding:8px;")
-        self._bulk_gen_sel_btn.setEnabled(False)
-        self._bulk_gen_sel_btn.clicked.connect(self._bulk_generate_selected)
-
-        self._bulk_gen_all_btn = QPushButton("Generate All")
-        self._bulk_gen_all_btn.setStyleSheet(
-            "background-color:#27AE60;color:white;font-weight:bold;padding:8px;")
-        self._bulk_gen_all_btn.setEnabled(False)
-        self._bulk_gen_all_btn.clicked.connect(self._bulk_generate_all)
-
-        act_row.addWidget(self._bulk_gen_sel_btn)
-        act_row.addWidget(self._bulk_gen_all_btn)
-        act_row.addStretch()
-        gen_layout.addLayout(act_row)
-
-        # Bulk logo row
-        bulk_logo_row = QHBoxLayout()
         bulk_logo_lbl = QLabel("Logo:")
         self._bulk_logo_combo = QComboBox()
         self._bulk_logo_combo.addItems(["With Logo", "Without Logo"])
@@ -1151,15 +1130,32 @@ class KaryotypeReportApp(QMainWindow):
             self._bulk_logo_combo.setCurrentIndex(idx_bulk_logo)
         self._bulk_logo_combo.currentTextChanged.connect(
             lambda txt: self.settings.setValue("bulk_logo_mode", txt))
-        bulk_logo_row.addWidget(bulk_logo_lbl)
-        bulk_logo_row.addWidget(self._bulk_logo_combo)
-        bulk_logo_row.addStretch()
-        gen_layout.addLayout(bulk_logo_row)
+        
+        self._bulk_gen_sel_btn = QPushButton("Generate Selected")
+        self._bulk_gen_sel_btn.setStyleSheet(
+            "background-color:#1F497D;color:white;font-weight:bold;padding:6px;")
+        self._bulk_gen_sel_btn.setEnabled(False)
+        self._bulk_gen_sel_btn.clicked.connect(self._bulk_generate_selected)
+
+        self._bulk_gen_all_btn = QPushButton("Generate All")
+        self._bulk_gen_all_btn.setStyleSheet(
+            "background-color:#27AE60;color:white;font-weight:bold;padding:6px;")
+        self._bulk_gen_all_btn.setEnabled(False)
+        self._bulk_gen_all_btn.clicked.connect(self._bulk_generate_all)
+
+        gen_layout.addWidget(bulk_logo_lbl)
+        gen_layout.addWidget(self._bulk_logo_combo)
+        gen_layout.addSpacing(15)
+        gen_layout.addWidget(self._bulk_gen_sel_btn)
+        gen_layout.addWidget(self._bulk_gen_all_btn)
+        gen_layout.addStretch()
 
         self._bulk_prog_lbl  = QLabel("")
         self._bulk_prog_lbl.setVisible(False)
         self._bulk_progress  = QProgressBar()
         self._bulk_progress.setVisible(False)
+        self._bulk_progress.setMaximumWidth(150)
+        
         gen_layout.addWidget(self._bulk_prog_lbl)
         gen_layout.addWidget(self._bulk_progress)
         vbox.addWidget(gen_grp)
