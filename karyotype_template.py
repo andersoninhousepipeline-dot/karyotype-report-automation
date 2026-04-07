@@ -124,7 +124,7 @@ def _rl(pdfplumber_top):
 
 HDR_X, HDR_Y, HDR_W, HDR_H   =  1.4,  _rl(67.8),   609.8, 67.8
 FTR_X, FTR_Y, FTR_W, FTR_H   =  1.4,  0.2,         610.6, 48.0
-STAMP_X, STAMP_Y, STAMP_W, STAMP_H = 276.4, _rl(205.6) - 25, 62.8, 78.8
+STAMP_X, STAMP_Y, STAMP_W, STAMP_H = 276.4, _rl(202.0), 62.8, 78.8
 
 # Content margins
 LX = 39.6    # left content x
@@ -304,6 +304,13 @@ class KaryotypeReportGenerator:
         # Determine layout variant
         has_comments = bool(self._get("COMMENTS"))
         self.three_page = has_comments   # True → 3-page layout
+
+    def _is_normal(self) -> bool:
+        """Return True if both autosome and sex chromosome are normal."""
+        auto = self._get("AUTOSOME").lower()
+        sex  = self._get("SEX CHROMOSOME", "SEX CHROMOSOME ").lower()
+        return not ("abnormal" in auto or "abnormal" in sex or
+                    "variant" in auto or "variant" in sex)
 
     def _iscn_color(self):
         """Return ISCN text color based on autosome/sex chromosome values.
@@ -575,9 +582,9 @@ class KaryotypeReportGenerator:
             c.drawString(LX, baseline, ll)
             c.drawString(COLON_X_L, baseline, ":")
 
-            # Left value (bold)
+            # Left value (bold, title-cased since Excel stores all-caps)
             c.setFont(F_TBL_LBL, value_size)
-            _wrap_text(c, lv, LEFT_VAL_X, baseline,
+            _wrap_text(c, lv.title(), LEFT_VAL_X, baseline,
                        RIGHT_LBL_X - LEFT_VAL_X - 8, F_TBL_LBL, value_size, leading=11)
 
             # Right label (bold)
@@ -804,28 +811,35 @@ class KaryotypeReportGenerator:
 
     def _draw_recommendations_block(self, c, y: float) -> float:
         y = _draw_section_heading(c, "Recommendations", y)
-        recs = self._get("RECOMMENDATIONS")
         c.setFillColor(BLACK)
-        # Split multiple recommendations on bullet char or newline
-        raw_items = [r.strip() for r in re.split(r'[\n\uf0b7\u2022]', recs) if r.strip()]
-        # Merge continuation fragments: if an item starts with lowercase it's a
-        # continuation of the previous item (e.g. line-break mid-sentence in Excel)
-        items = []
-        for item in raw_items:
-            if items and item and item[0].islower():
-                items[-1] = items[-1] + " " + item
-            else:
-                items.append(item)
-        if len(items) > 1:
+        if self._is_normal():
+            items = [
+                "Genetic counseling is recommended to discuss the implications of the result.",
+                "Additional genetic testing may be warranted based on the specific phenotypic indication.",
+            ]
             y = _draw_bullet_list(c, items, DIV_X0, y - 18,
                                   DIV_X1 - DIV_X0, F_BODY, 11)
-        elif items:
-            # Single recommendation → plain text using the parsed (bullet-stripped) item
-            y = _draw_justified(c, items[0], DIV_X0, y - 10,
-                                DIV_X1 - DIV_X0, F_BODY, 11)
         else:
-            y = _draw_justified(c, recs, DIV_X0, y - 10,
-                                DIV_X1 - DIV_X0, F_BODY, 11)
+            recs = self._get("RECOMMENDATIONS")
+            # Split multiple recommendations on bullet char or newline
+            raw_items = [r.strip() for r in re.split(r'[\n\uf0b7\u2022]', recs) if r.strip()]
+            # Merge continuation fragments: if an item starts with lowercase it's a
+            # continuation of the previous item (e.g. line-break mid-sentence in Excel)
+            items = []
+            for item in raw_items:
+                if items and item and item[0].islower():
+                    items[-1] = items[-1] + " " + item
+                else:
+                    items.append(item)
+            if len(items) > 1:
+                y = _draw_bullet_list(c, items, DIV_X0, y - 18,
+                                      DIV_X1 - DIV_X0, F_BODY, 11)
+            elif items:
+                y = _draw_justified(c, items[0], DIV_X0, y - 10,
+                                    DIV_X1 - DIV_X0, F_BODY, 11)
+            else:
+                y = _draw_justified(c, recs, DIV_X0, y - 10,
+                                    DIV_X1 - DIV_X0, F_BODY, 11)
         return y
 
     def _draw_methodology_block(self, c, y: float) -> float:
