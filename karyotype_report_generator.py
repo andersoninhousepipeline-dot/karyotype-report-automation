@@ -502,7 +502,7 @@ class KaryotypeReportApp(QMainWindow):
         vbox.addLayout(title_row)
 
         self.tabs = QTabWidget()
-        vbox.addWidget(self.tabs)
+        vbox.addWidget(self.tabs, 1)  # stretch=1 so tabs fill all available vertical space
 
         self.tabs.addTab(self._create_manual_tab(), "Manual Entry")
         self.tabs.setTabIcon(
@@ -522,6 +522,7 @@ class KaryotypeReportApp(QMainWindow):
     def _create_manual_tab(self) -> QWidget:
         tab   = QWidget()
         outer = QHBoxLayout(tab)
+        outer.setContentsMargins(4, 4, 4, 4)  # reduce wasted edge space
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         outer.addWidget(splitter)
@@ -529,6 +530,8 @@ class KaryotypeReportApp(QMainWindow):
         # ── Left: input form ──────────────────────────────────────────────────
         left_w   = QWidget()
         left_vbox = QVBoxLayout(left_w)
+        left_vbox.setSpacing(4)
+        left_vbox.setContentsMargins(0, 0, 0, 0)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -537,7 +540,7 @@ class KaryotypeReportApp(QMainWindow):
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         scroll.setWidget(inner)
-        left_vbox.addWidget(scroll)
+        left_vbox.addWidget(scroll, 1)  # stretch=1: form scroll takes all spare vertical space
 
         # Report Type row (special — not in FIELD_DEFS)
         rt_row = QHBoxLayout()
@@ -614,6 +617,7 @@ class KaryotypeReportApp(QMainWindow):
         btn_out.clicked.connect(self._manual_browse_output)
         out_row.addWidget(self._manual_out_lbl, 1)
         out_row.addWidget(btn_out)
+        gen_layout.addLayout(out_row)   # was missing — output folder row now visible
         # Logo row
         logo_row = QHBoxLayout()
         logo_lbl = QLabel("Logo:")
@@ -667,7 +671,7 @@ class KaryotypeReportApp(QMainWindow):
         right_vbox.addWidget(prev_scroll)
 
         splitter.addWidget(right_grp)
-        splitter.setSizes([440, 800])
+        splitter.setSizes([380, 660])   # 1040px total — fits within 1100px minimum window
 
         # Wire image buttons and sample number auto-discovery
         self._btn_edit_imgs.clicked.connect(self._manual_edit_images)
@@ -813,10 +817,9 @@ class KaryotypeReportApp(QMainWindow):
 
     def _auto_discover_images(self, sample_no: str):
         found = _find_images_for_sample(sample_no.strip(), self._image_search_dir)
-        if found:
-            self._image_paths = found
-            self._refresh_manual_image_label()
-            self._schedule_preview()
+        self._image_paths = found          # always update (clears stale paths when nothing found)
+        self._refresh_manual_image_label()
+        self._schedule_preview()
 
     def _refresh_manual_image_label(self):
         n = len(self._image_paths)
@@ -946,6 +949,7 @@ class KaryotypeReportApp(QMainWindow):
     def _create_bulk_tab(self) -> QWidget:
         tab  = QWidget()
         vbox = QVBoxLayout(tab)
+        vbox.setContentsMargins(6, 6, 6, 6)  # reduce wasted edge space
 
         # ── 1. Setup (Excel, Images, Output) ───────────────────────────────────
         setup_grp = QGroupBox("1. Setup")
@@ -1112,7 +1116,7 @@ class KaryotypeReportApp(QMainWindow):
         prev_vbox.addWidget(prev_scroll, 1)
 
         main_splitter.addWidget(prev_grp)
-        main_splitter.setSizes([280, 380, 600])
+        main_splitter.setSizes([220, 320, 500])  # 1040px total — fits within 1100px minimum window
 
         data_layout.addWidget(main_splitter, 1)
         vbox.addWidget(data_grp, 1)
