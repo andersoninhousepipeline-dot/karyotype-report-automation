@@ -22,7 +22,6 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-
 def _resource_path(relative: str) -> str:
     base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base, relative)
