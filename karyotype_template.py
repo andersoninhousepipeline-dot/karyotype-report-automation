@@ -765,7 +765,7 @@ class KaryotypeReportGenerator:
         mid_x  = (tbl_x0 + tbl_x1) / 2
         col1_x = tbl_x0 + 8    # left area label x
         col2_x = col1_x + 175  # left area value x
-        col3_x = mid_x + 10    # right area label x (clear of divider)
+        col3_x = mid_x + 18    # right area label x — extra offset gives breathing room from centre
         col4_x = col3_x + 175  # right area value x
 
         # Background
@@ -782,11 +782,11 @@ class KaryotypeReportGenerator:
         # Pre-compute aligned colon x for each half based on longest label
         c.setFont(F_BODY, 9)
         left_colon_x  = col1_x + max(c.stringWidth("Metaphase analysed",        F_BODY, 9),
-                                     c.stringWidth("Estimated band resolution",  F_BODY, 9)) + 4
+                                     c.stringWidth("Estimated band resolution",  F_BODY, 9)) + 8
         right_colon_x = col3_x + max(c.stringWidth("Autosome",      F_BODY, 9),
-                                     c.stringWidth("Sex chromosome", F_BODY, 9)) + 4
-        left_val_x    = left_colon_x  + c.stringWidth(":", F_BODY, 9) + 6
-        right_val_x   = right_colon_x + c.stringWidth(":", F_BODY, 9) + 6
+                                     c.stringWidth("Sex chromosome", F_BODY, 9)) + 8
+        left_val_x    = left_colon_x  + c.stringWidth(":", F_BODY, 9) + 10
+        right_val_x   = right_colon_x + c.stringWidth(":", F_BODY, 9) + 10
 
         def _cell(lbl, val, lx, colon_x, val_x, ly):
             c.setFont(F_BODY, 9); c.setFillColor(BLACK)
