@@ -124,7 +124,7 @@ def _rl(pdfplumber_top):
 
 HDR_X, HDR_Y, HDR_W, HDR_H   =  1.4,  _rl(67.8),   609.8, 67.8
 FTR_X, FTR_Y, FTR_W, FTR_H   =  1.4,  0.2,         610.6, 48.0
-STAMP_X, STAMP_Y, STAMP_W, STAMP_H = 276.4, _rl(202.0), 62.8, 78.8
+STAMP_X, STAMP_Y, STAMP_W, STAMP_H = 276.4, _rl(216.0), 62.8, 78.8
 
 # Content margins
 LX = 39.6    # left content x
@@ -539,12 +539,12 @@ class KaryotypeReportGenerator:
             c.drawImage(_img(_assets.HEADER), HDR_X, HDR_Y, HDR_W, HDR_H, mask="auto")
             c.drawImage(_img(_assets.FOOTER), FTR_X, FTR_Y, FTR_W, FTR_H, mask="auto")
 
-        # Page number  "N | P a g e"  — the footer image already contains the
-        # "Anderson Clinical Genetics..." line; we only need to stamp the page number.
-        c.setFont(F_BODY, 8)
-        c.setFillColor(BLACK)
-        pg_str = f"{page_num}  |  P a g e"
-        c.drawRightString(DIV_X1, FTR_Y + FTR_H + 4, pg_str)
+        # Page number — only shown when logo/header is included
+        if self.include_logo:
+            c.setFont(F_BODY, 8)
+            c.setFillColor(BLACK)
+            pg_str = f"{page_num}  |  P a g e"
+            c.drawRightString(DIV_X1, FTR_Y + FTR_H + 4, pg_str)
 
     def _draw_patient_table(self, c):
         """Draw the patient info table rows."""
@@ -743,10 +743,10 @@ class KaryotypeReportGenerator:
         except Exception:
             pass
 
-        # Draw border only if the image doesn't already have its own frame
+        # Draw a thin border only if the image doesn't already have its own frame
         if not self._image_has_border(path):
             c.setStrokeColor(BLACK)
-            c.setLineWidth(1.0)
+            c.setLineWidth(0.5)
             c.rect(cx, cy, dw, dh, fill=0, stroke=1)
 
     def _draw_metaphase_table(self, c, rl_y: float) -> float:
@@ -772,15 +772,7 @@ class KaryotypeReportGenerator:
         c.setFillColor(FIELD_BG)
         c.rect(tbl_x0, rl_y, tbl_x1 - tbl_x0, row_h * 2, fill=1, stroke=0)
 
-        c.setStrokeColor(GRAY_DIV)
-        c.setLineWidth(0.5)
-        c.rect(tbl_x0, rl_y, tbl_x1 - tbl_x0, row_h * 2, fill=0, stroke=1)
-
-        # Row divider
-        c.line(tbl_x0, rl_y + row_h, tbl_x1, rl_y + row_h)
-        # Vertical mid divider
-        mid_x = (tbl_x0 + tbl_x1) / 2
-        c.line(mid_x, rl_y, mid_x, rl_y + row_h * 2)
+        # No outer border or internal dividers on the metaphase table
 
         # Vertically centre text: row_h/2 - cap_height/2 from row top
         cap_h9 = 9 * 0.74 / 2
