@@ -377,19 +377,18 @@ class KaryotypeReportGenerator:
         self._draw_patient_table(c)
 
         # ── Test Indication ───────────────────────────────────────────────────
-        # Position just below the patient-table bottom border (RL ≈ 520.5)
-        # leaving ~20 pt of breathing room.
-        ti_y = _rl(290.0)   # pdfplumber ≈ 290 → RL 502; 20 pt below table bottom
+        # Patient table bottom ≈ RL 524; leave ~12 pt gap.
+        ti_y = _rl(282.0)   # RL 510; 12 pt below table bottom
         section_y = _draw_section_heading(c, "Test Indication", ti_y)
         c.setFont(F_BODY, 11)
         c.setFillColor(BLACK)
         indication = self._get("TEST INDICATION") or "To rule out gross chromosomal abnormality"
-        section_y = _draw_justified(c, indication, DIV_X0, section_y - 12, DIV_X1 - DIV_X0,
+        section_y = _draw_justified(c, indication, DIV_X0, section_y - 10, DIV_X1 - DIV_X0,
                                     F_BODY, 11)
 
         # ── Result ────────────────────────────────────────────────────────────
-        res_y = section_y - 39
-        _divider(c, res_y + 12, lw=0.5)
+        res_y = section_y - 10
+        _divider(c, section_y - 4, lw=0.5)   # 4 pt below indication text bottom
         res_y = _draw_section_heading(c, "Result", res_y)
 
         # ISCN result box — tries to fit on single line by reducing font;
@@ -428,7 +427,7 @@ class KaryotypeReportGenerator:
         line_h  = font_sz * 1.3
         n_lines = len(lines)
         box_h   = n_lines * line_h + pad_v * 2
-        box_y   = res_y - 8
+        box_y   = res_y - 5
         box_bot = box_y - box_h
 
         c.setFillColor(AMBER_BG)
@@ -446,7 +445,7 @@ class KaryotypeReportGenerator:
         for idx, line in enumerate(lines):
             c.drawCentredString(box_cx, first_y - idx * line_h, line)
 
-        karyogram_top_y = box_bot - 10  # RL y at top of karyogram area
+        karyogram_top_y = box_bot - 6  # RL y at top of karyogram area
         return karyogram_top_y
 
     def _page1_with_metaphase(self, c):
@@ -463,11 +462,13 @@ class KaryotypeReportGenerator:
         self._draw_metaphase_table(c, meta_bot)
 
     def _page1(self, c):
-        """3-page layout: karyogram only on page 1 (no metaphase table)."""
-        top_y    = self._page1_common(c, page_num=1, total_pages=3)
-        # Leave clearance above footer + page-number line
-        bottom_y = FTR_Y + FTR_H + 22   # ≈ 70 pt from bottom
-        self._draw_karyograms(c, top_y, bottom_y)
+        """3-page layout: karyogram + metaphase table on page 1."""
+        top_y  = self._page1_common(c, page_num=1, total_pages=3)
+        meta_h = 19.5 * 2            # 39 pt  (2 rows × row_h)
+        meta_bot  = FTR_Y + FTR_H + 22   # RL y of table bottom ≈ 70 pt
+        kgram_bot = meta_bot + meta_h + 8
+        self._draw_karyograms(c, top_y, kgram_bot)
+        self._draw_metaphase_table(c, meta_bot)
 
     # ══════════════════════════════════════════════════════════════════════════
     # PAGE 2 — NORMAL (2-page layout)
@@ -492,14 +493,7 @@ class KaryotypeReportGenerator:
     # ══════════════════════════════════════════════════════════════════════════
     def _page2_abnormal(self, c):
         self._draw_chrome(c, 2, 3)
-        hdr_bot = _rl(67.8)   # RL y of header bottom = 724.2
-
-        # Metaphase table sits flush below the header.
-        # _draw_metaphase_table(rl_y) draws UPWARD from rl_y by row_h*2.
-        meta_h   = 19.5 * 2   # 39 pt
-        meta_bot = hdr_bot - meta_h - 2   # bottom of table in RL
-        self._draw_metaphase_table(c, meta_bot)
-        y = meta_bot - 24
+        y = _rl(67.8) - 52  # ~52 pt below header bottom
 
         y = _draw_section_heading(c, "Interpretation", y)
         c.setFillColor(BLACK)
